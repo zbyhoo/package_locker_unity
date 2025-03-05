@@ -16,6 +16,7 @@ namespace PrefabLocker.Editor
         {
             PrefabLockWindow window = GetWindow<PrefabLockWindow>("Prefab Lock Manager");
             window._filePath = AssetDatabase.GetAssetPath(Selection.activeObject);
+            window._userName = EditorPrefs.GetString("PrefabLockerUserName", "");
         }
 
         [MenuItem("Assets/Prefab Locker Manager")]
