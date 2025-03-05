@@ -1,6 +1,6 @@
 {
-    "name": "Gamesture.PrefabLocker.Editor",
-    "rootNamespace": "SocialWars.Editor.Scripts.FileLocker",
+    "name": "PrefabLocker.Editor",
+    "rootNamespace": "PrefabLocker",
     "references": [
         "Unity.EditorCoroutines.Editor"
     ],

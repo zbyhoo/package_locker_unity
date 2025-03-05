@@ -1,10 +1,10 @@
-namespace SocialWars.Editor.Scripts.FileLocker
+namespace PrefabLocker.Editor
 {
     [System.Serializable]
     public class LockStatus
     {
-        public bool locked;
-        public string user;
-        public string timestamp;
+        public bool Locked;
+        public string User;
+        public string Timestamp;
     }
 }

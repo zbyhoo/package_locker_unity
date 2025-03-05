@@ -3,14 +3,14 @@ using Unity.EditorCoroutines.Editor;
 using UnityEditor;
 using UnityEngine;
 
-namespace SocialWars.Editor.Scripts.FileLocker
+namespace PrefabLocker.Editor
 {
     public class PrefabLockWindow : EditorWindow
     {
-        private string filePath = "";
-        private string statusMessage = "";
+        private string _filePath = "";
+        private string _statusMessage = "";
 
-        [MenuItem("Tools/Prefab Lock Manager")]
+        [MenuItem("Tools/Prefab Locker/Manager")]
         public static void ShowWindow()
         {
             GetWindow<PrefabLockWindow>("Prefab Lock Manager");
@@ -19,7 +19,7 @@ namespace SocialWars.Editor.Scripts.FileLocker
         private void OnGUI()
         {
             GUILayout.Label("Lock/Unlock Prefab", EditorStyles.boldLabel);
-            filePath = EditorGUILayout.TextField("Prefab Path", filePath);
+            _filePath = EditorGUILayout.TextField("Prefab Path", _filePath);
 
             if (GUILayout.Button("Lock Prefab"))
             {
@@ -31,23 +31,23 @@ namespace SocialWars.Editor.Scripts.FileLocker
                 EditorCoroutineUtility.StartCoroutineOwnerless(UnlockPrefab());
             }
 
-            GUILayout.Label("Status: " + statusMessage);
+            GUILayout.Label("Status: " + _statusMessage);
         }
 
         private IEnumerator LockPrefab()
         {
-            yield return LockServiceClient.LockAsset(filePath, (success, response) =>
+            yield return LockServiceClient.LockAsset(_filePath, (success, response) =>
             {
-                statusMessage = success ? "Lock successful." : "Lock failed: " + response;
+                _statusMessage = success ? "Lock successful." : "Lock failed: " + response;
                 Repaint();
             });
         }
 
         private IEnumerator UnlockPrefab()
         {
-            yield return LockServiceClient.UnlockAsset(filePath, (success, response) =>
+            yield return LockServiceClient.UnlockAsset(_filePath, (success, response) =>
             {
-                statusMessage = success ? "Unlock successful." : "Unlock failed: " + response;
+                _statusMessage = success ? "Unlock successful." : "Unlock failed: " + response;
                 Repaint();
             });
         }

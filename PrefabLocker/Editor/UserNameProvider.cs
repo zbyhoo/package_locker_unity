@@ -1,7 +1,18 @@
-namespace SocialWars.Editor.Scripts.FileLocker
+using System;
+
+namespace PrefabLocker.Editor
 {
-    public class UserNameProvider
+    internal static class UserNameProvider
     {
-        public static string GetUserName() => "User1";
+        public static string GetUserName()
+        {
+            string name = PrefabLockerSettings.GetOrCreateSettings().UserName;
+            if (string.IsNullOrEmpty(name))
+            {
+                throw new Exception("missing user name");
+            }
+
+            return name;
+        }
     }
 }

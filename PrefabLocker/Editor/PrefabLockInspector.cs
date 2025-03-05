@@ -1,38 +1,35 @@
-using UnityEngine;
 using UnityEditor;
+using UnityEngine;
 
-namespace SocialWars.Editor.Scripts.FileLocker
+namespace PrefabLocker.Editor
 {
-
-
     [CustomEditor(typeof(GameObject))]
     public class PrefabLockInspector : UnityEditor.Editor
     {
-        private bool isPrefabAsset = false;
-        private string assetPath = "";
+        private bool _isPrefabAsset;
+        private string _assetPath = "";
 
         private void OnEnable()
         {
-            assetPath = AssetDatabase.GetAssetPath(target);
-            isPrefabAsset = !string.IsNullOrEmpty(assetPath) && assetPath.EndsWith(".prefab");
+            _assetPath = AssetDatabase.GetAssetPath(target);
+            _isPrefabAsset = !string.IsNullOrEmpty(_assetPath) && _assetPath.EndsWith(".prefab");
         }
 
         public override void OnInspectorGUI()
         {
-            if (isPrefabAsset)
+            if (_isPrefabAsset)
             {
-                LockStatus status = PrefabLockOverlay.GetStatus(assetPath);
-                if (status != null && status.locked)
+                LockStatus status = PrefabLockOverlay.GetStatus(_assetPath);
+                if (status != null && status.Locked)
                 {
-                    // Draw a horizontal block with the lock icon and status.
                     EditorGUILayout.BeginHorizontal();
-                    PrefabLockOverlay.DrawLockIcon(new Rect(), status.user, true);
+                    PrefabLockOverlay.DrawLockIcon(new Rect(), status.User, true);
                     
-                    bool isMyLock = status.user == UserNameProvider.GetUserName();
+                    bool isMyLock = status.User == UserNameProvider.GetUserName();
                     Color iconColor = isMyLock ? Color.green : Color.red;
                     Color originalColor = GUI.color;
                     GUI.color = iconColor;
-                    GUILayout.Label($"Locked by: {status.user}", EditorStyles.boldLabel);
+                    GUILayout.Label($"Locked by: {status.User}", EditorStyles.boldLabel);
                     GUI.color = originalColor;
                     
                     EditorGUILayout.EndHorizontal();
@@ -41,8 +38,7 @@ namespace SocialWars.Editor.Scripts.FileLocker
 
                 
             }
-
-            // Draw the rest of the inspector normally.
+            
             DrawDefaultInspector();
         }
     }

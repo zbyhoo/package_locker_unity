@@ -3,7 +3,7 @@ using Unity.EditorCoroutines.Editor;
 using UnityEditor;
 using UnityEngine;
 
-namespace SocialWars.Editor.Scripts.FileLocker
+namespace PrefabLocker.Editor
 {
     [InitializeOnLoad]
     public static class PrefabLockOverlay
@@ -32,7 +32,7 @@ namespace SocialWars.Editor.Scripts.FileLocker
             }
         }
 
-        public static void UpdateData()
+        internal static void UpdateData()
         {
             _nextUpdateTime = EditorApplication.timeSinceStartup + UPDATE_INTERVAL;
             EditorCoroutineUtility.StartCoroutineOwnerless(LockServiceClient.UpdateLockStatus(OnLockedUpdated));
@@ -40,7 +40,7 @@ namespace SocialWars.Editor.Scripts.FileLocker
 
         private static void OnLockedUpdated(LockDictionary locks)
         {
-            _lockedPrefabs = locks.locks;
+            _lockedPrefabs = locks.Locks;
             // Refresh the project window so the icons are updated.
             EditorApplication.RepaintProjectWindow();
         }
@@ -61,17 +61,17 @@ namespace SocialWars.Editor.Scripts.FileLocker
             }
         }
 
-        public static LockStatus GetStatus(string assetPath)
+        internal static LockStatus GetStatus(string assetPath)
         {
             bool exists = _lockedPrefabs.TryGetValue(assetPath, out string lockedBy);
             return new LockStatus
             {
-                locked = exists && lockedBy != null,
-                user = lockedBy
+                Locked = exists && lockedBy != null,
+                User = lockedBy
             };
         }
 
-        public static void DrawLockIcon(Rect iconRect, string lockedBy, bool label)
+        internal static void DrawLockIcon(Rect iconRect, string lockedBy, bool label)
         {
             // Determine icon color based on ownership.
             bool isMyLock = lockedBy == UserNameProvider.GetUserName();

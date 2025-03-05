@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEditor;
 
-namespace SocialWars.Editor.Scripts.FileLocker
+namespace PrefabLocker.Editor
 {
     public class PrefabSaveLockProcessor : AssetModificationProcessor
     {
@@ -26,7 +26,7 @@ namespace SocialWars.Editor.Scripts.FileLocker
                         continue; // Skip saving this prefab.
                     }
                     // If not locked, try to lock automatically.
-                    if (!status.locked)
+                    if (!status.Locked)
                     {
                         bool lockedNow = LockServiceClient.LockPrefab(path);
                         if (!lockedNow)
@@ -36,9 +36,9 @@ namespace SocialWars.Editor.Scripts.FileLocker
                         }
                     }
                     // If the prefab is locked but not by the current user, cancel its save.
-                    else if (status.locked && status.user != UserNameProvider.GetUserName())
+                    else if (status.Locked && status.User != UserNameProvider.GetUserName())
                     {
-                        EditorUtility.DisplayDialog("Lock Violation", "Prefab " + path + " is locked by " + status.user + ". Save aborted.", "OK");
+                        EditorUtility.DisplayDialog("Lock Violation", "Prefab " + path + " is locked by " + status.User + ". Save aborted.", "OK");
                         continue;
                     }
                     // If we reach here, the prefab is either already locked by currentUser or was just locked.

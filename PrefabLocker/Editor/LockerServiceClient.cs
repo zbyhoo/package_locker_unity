@@ -6,14 +6,14 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
 
-namespace SocialWars.Editor.Scripts.FileLocker
+namespace PrefabLocker.Editor
 {
-    public abstract class LockServiceClient
+    internal abstract class LockServiceClient
     {
         // Replace with your actual cloud service URL.
-        private static string ServiceUrl => "http://localhost:5005/";
-        private static string Branch => "master";
-        private static string Origin => "some_origin";
+        private static string ServiceUrl => PrefabLockerSettings.GetOrCreateSettings().GetServiceUrl();
+        private static string Branch => GitProvider.GetBranch();
+        private static string Origin => GitProvider.GetOrigin();
 
         private static WWWForm GetForm(string filePath)
         {
@@ -48,7 +48,7 @@ namespace SocialWars.Editor.Scripts.FileLocker
             return url;
         }
 
-        public static IEnumerator LockAsset(string filePath, Action<bool, string> callback)
+        internal static IEnumerator LockAsset(string filePath, Action<bool, string> callback)
         {
             WWWForm form = GetForm(filePath);
 
@@ -71,7 +71,7 @@ namespace SocialWars.Editor.Scripts.FileLocker
             }
         }
 
-        public static IEnumerator UnlockAsset(string filePath, Action<bool, string> callback)
+        internal static IEnumerator UnlockAsset(string filePath, Action<bool, string> callback)
         {
             WWWForm form = GetForm(filePath);
 
@@ -92,8 +92,8 @@ namespace SocialWars.Editor.Scripts.FileLocker
                 }
             }
         }
-        
-        public static IEnumerator UpdateLockStatus(Action<LockDictionary> callback)
+
+        internal static IEnumerator UpdateLockStatus(Action<LockDictionary> callback)
         {
             string url = AddParamsToUrl($"{ServiceUrl}/lockedAssets");
 
@@ -109,7 +109,7 @@ namespace SocialWars.Editor.Scripts.FileLocker
                 {
                     string json = www.downloadHandler.text;
                     LockDictionary locks = Newtonsoft.Json.JsonConvert.DeserializeObject<LockDictionary>(json);
-                    if (locks is { locks: not null })
+                    if (locks is { Locks: not null })
                     {
                         callback.Invoke(locks);
                     }
@@ -117,12 +117,7 @@ namespace SocialWars.Editor.Scripts.FileLocker
             }
         }
         
-        /// <summary>
-        /// Synchronously queries the lock status from the cloud service.
-        /// Expected endpoint: GET /status?branch={branch}&filePath={filePath}
-        /// Expected JSON format: { "locked": true/false, "user": "UserName", "timestamp": "..." }
-        /// </summary>
-        public static LockStatus GetLockStatus(string filePath)
+        internal static LockStatus GetLockStatus(string filePath)
         {
             try
             {
@@ -133,18 +128,14 @@ namespace SocialWars.Editor.Scripts.FileLocker
                     return Newtonsoft.Json.JsonConvert.DeserializeObject<LockStatus>(json);
                 }
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
                 Debug.LogError("Error checking lock status for " + filePath + ": " + ex.Message);
                 return null;
             }
         }
-
-        /// <summary>
-        /// Synchronously sends a POST request to lock the prefab.
-        /// Expected endpoint: POST /lock (with form fields: branch, filePath, userName)
-        /// </summary>
-        public static bool LockPrefab(string filePath)
+        
+        internal static bool LockPrefab(string filePath)
         {
             try
             {

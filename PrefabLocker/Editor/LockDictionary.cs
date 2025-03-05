@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 
-namespace SocialWars.Editor.Scripts.FileLocker
+namespace PrefabLocker.Editor
 {
     [System.Serializable]
     public class LockDictionary
     {
-        public Dictionary<string, string> locks;
+        public Dictionary<string, string> Locks;
     }
 }
