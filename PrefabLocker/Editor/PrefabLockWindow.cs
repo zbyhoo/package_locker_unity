@@ -8,17 +8,32 @@ namespace PrefabLocker.Editor
     public class PrefabLockWindow : EditorWindow
     {
         private string _filePath = "";
+        private string _userName = "";
         private string _statusMessage = "";
 
         [MenuItem("Tools/Prefab Locker/Manager")]
         public static void ShowWindow()
         {
-            GetWindow<PrefabLockWindow>("Prefab Lock Manager");
+            PrefabLockWindow window = GetWindow<PrefabLockWindow>("Prefab Lock Manager");
+            window._filePath = AssetDatabase.GetAssetPath(Selection.activeObject);
+        }
+
+        [MenuItem("Assets/Prefab Locker Manager")]
+        public static void ShowFromAsset()
+        {
+            ShowWindow();
         }
 
         private void OnGUI()
         {
             GUILayout.Label("Lock/Unlock Prefab", EditorStyles.boldLabel);
+            string newUser = EditorGUILayout.TextField("User Name", _userName);
+            if (newUser != _userName)
+            {
+                UserNameProvider.SetUserName(newUser);
+                _userName = newUser;
+            }
+            
             _filePath = EditorGUILayout.TextField("Prefab Path", _filePath);
 
             if (GUILayout.Button("Lock Prefab"))

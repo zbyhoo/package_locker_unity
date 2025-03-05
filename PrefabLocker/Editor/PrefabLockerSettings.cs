@@ -8,10 +8,9 @@ namespace PrefabLocker.Editor
 {
     public class PrefabLockerSettings : ScriptableObject
     {
-        private const string PATH = "Assets/PrefabLocker/Editor/PrefabLockerSettings.asset";
-        private const string FILE = "NotificationsSettings.asset";
-
-        public string UserName;
+        private const string PATH = "Assets/PrefabLocker/Editor/PrefabLocker/";
+        private const string FILE = "PrefabLockerSettings.asset";
+        
         public string Url;
         public int Port;
 
