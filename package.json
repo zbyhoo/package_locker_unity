@@ -1,0 +1,19 @@
+{
+  "name": "zbyhoo.prefablocker",
+  "version": "1.0.0",
+  "displayName": "Prefab Locker",
+  "description": "A system for locking prefabs during collaborative editing",
+  "unity": "2022.3",
+  "dependencies": {
+    "com.unity.editorcoroutines": "1.0.0"
+  },
+  "keywords": [
+    "prefab",
+    "lock",
+    "collaboration"
+  ],
+  "author": {
+    "name": "Zbyhoo",
+    "url": "https://github.com/zbyhoo"
+  }
+}
