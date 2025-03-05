@@ -49,7 +49,7 @@ namespace PrefabLocker.Editor
         {
             // Convert GUID to asset path.
             string assetPath = AssetDatabase.GUIDToAssetPath(guid);
-            if (!assetPath.EndsWith(".prefab"))
+            if (!assetPath.EndsWith(".prefab") && !assetPath.EndsWith(".unity"))
             {
                 return;
             }
@@ -57,7 +57,7 @@ namespace PrefabLocker.Editor
             // Check if this prefab is locked.
             if (_lockedPrefabs.TryGetValue(assetPath, out string lockedBy))
             {
-                DrawLockIcon(new Rect(selectionRect.xMax - 16, selectionRect.y, 16, 16), lockedBy, false);
+                DrawLockIcon(selectionRect, lockedBy, false);
             }
         }
 
@@ -71,7 +71,7 @@ namespace PrefabLocker.Editor
             };
         }
 
-        internal static void DrawLockIcon(Rect iconRect, string lockedBy, bool label)
+        internal static void DrawLockIcon(Rect selectionRect, string lockedBy, bool label)
         {
             // Determine icon color based on ownership.
             bool isMyLock = lockedBy == UserNameProvider.GetUserName();
@@ -91,7 +91,15 @@ namespace PrefabLocker.Editor
                 }
                 else
                 {
-                    GUI.DrawTexture(iconRect, lockIcon);
+                    // Calculate the icon position - this places it in the top-right corner of the asset icon
+                    Rect overlayRect =
+                        new(
+                        selectionRect.x + 2, // Slightly offset from left edge of selection
+                        selectionRect.y + 2, // Slightly offset from top edge of selection
+                        16, 16 // Small icon size for the overlay
+                    );
+            
+                    GUI.DrawTexture(overlayRect, lockIcon);
                 }
 
                 // Restore original GUI color.

@@ -95,6 +95,12 @@ namespace PrefabLocker.Editor
 
         internal static IEnumerator UpdateLockStatus(Action<LockDictionary> callback)
         {
+            if (UserNameProvider.EnsureUserNameExists(false) == false)
+            {
+                Debug.Log("name not provided");
+                yield break;
+            }
+            
             string url = AddParamsToUrl($"{ServiceUrl}/lockedAssets");
 
             using (UnityWebRequest www = UnityWebRequest.Get(url))

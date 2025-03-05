@@ -17,7 +17,7 @@ namespace PrefabLocker.Editor
             foreach (string path in paths)
             {
                 // We only want to enforce lock checks for prefab files.
-                if (path.EndsWith(".prefab"))
+                if (path.EndsWith(".prefab") || path.EndsWith(".unity"))
                 {
                     LockStatus status = LockServiceClient.GetLockStatus(path);
                     if (status == null)
