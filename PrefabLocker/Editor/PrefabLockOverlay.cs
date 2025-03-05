@@ -12,7 +12,7 @@ namespace PrefabLocker.Editor
         private static Dictionary<string, string> _lockedPrefabs = new Dictionary<string, string>();
 
         // How often (in seconds) to update lock status from the server.
-        private const float UPDATE_INTERVAL = 2f;
+        private const float UPDATE_INTERVAL = 10f;
         private static double _nextUpdateTime;
 
         static PrefabLockOverlay()
