@@ -11,7 +11,7 @@ namespace PrefabLocker.Editor
     internal abstract class LockServiceClient
     {
         // Replace with your actual cloud service URL.
-        private static string ServiceUrl => PrefabLockerSettings.GetOrCreateSettings().GetServiceUrl();
+        private static string ServiceUrl => PrefabLockerSettings.Get().GetServiceUrl();
         private static string Branch => GitProvider.GetBranch();
         private static string Origin => GitProvider.GetOrigin();
 

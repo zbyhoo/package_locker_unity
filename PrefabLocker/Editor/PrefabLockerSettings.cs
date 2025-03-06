@@ -22,19 +22,19 @@ namespace PrefabLocker.Editor
         [MenuItem("Tools/Prefab Locker/Settings")]
         public static void SelectSettings()
         {
-            PrefabLockerSettings settings = GetOrCreateSettings();
-            Selection.activeObject = settings;
-        }
-
-        [NotNull]
-        internal static PrefabLockerSettings GetOrCreateSettings()
-        {
             PrefabLockerSettings settings = AssetDatabase.LoadAssetAtPath<PrefabLockerSettings>($"{PATH}{FILE}");
             if (settings == null)
             {
                 settings = CreateSettings();
             }
+            
+            Selection.activeObject = settings;
+        }
 
+        [NotNull]
+        internal static PrefabLockerSettings Get()
+        {
+            PrefabLockerSettings settings = AssetDatabase.LoadAssetAtPath<PrefabLockerSettings>($"{PATH}{FILE}");
             if (settings == null)
             {
                 throw new Exception("cannot get or create settings");
@@ -46,6 +46,12 @@ namespace PrefabLocker.Editor
         [CanBeNull]
         private static PrefabLockerSettings CreateSettings()
         {
+            PrefabLockerSettings settings = AssetDatabase.LoadAssetAtPath<PrefabLockerSettings>($"{PATH}{FILE}");
+            if (settings != null)
+            {
+                return settings;
+            }
+            
             ScriptableObject asset = CreateInstance<PrefabLockerSettings>();
 
             if (Directory.Exists(PATH) == false)
