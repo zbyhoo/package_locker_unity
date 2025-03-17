@@ -71,11 +71,11 @@ namespace PrefabLocker.Editor
             };
         }
 
-        internal static void DrawLockIcon(Rect selectionRect, string lockedBy, bool label)
+        internal static void DrawLockIcon(Rect selectionRect, string lockedBy, bool label, Color? forcedColor = null)
         {
             // Determine icon color based on ownership.
             bool isMyLock = lockedBy == UserNameProvider.GetUserName();
-            Color iconColor = isMyLock ? Color.green : Color.red;
+            Color iconColor = forcedColor ?? (isMyLock ? Color.green : Color.red);
 
             // Try to load a lock icon. You can put your custom icon in an Editor Resources folder.
             Texture2D lockIcon = EditorGUIUtility.IconContent("LockIcon-On").image as Texture2D;

@@ -8,18 +8,24 @@ namespace PrefabLocker.Editor
 {
     public class PrefabLockWindow : EditorWindow
     {
-        private string _filePath = "";
         private string _userName = "";
         private string _statusMessage = "";
-        private Dictionary<string, string> _lockedFiles = new Dictionary<string, string>();
+        private Dictionary<string, string> _lockedFiles = new();
         private Vector2 _scrollPosition;
-        private bool _isRefreshing = false;
+        private bool _isRefreshing;
+        private SortField _currentSortField = SortField.FilePath;
+        private bool _sortAscending = true;
+        
+        private enum SortField
+        {
+            FilePath,
+            LockedBy
+        }
 
         [MenuItem("Tools/Prefab Locker/Manager")]
         public static void ShowWindow()
         {
             PrefabLockWindow window = GetWindow<PrefabLockWindow>("Prefab Lock Manager");
-            window._filePath = AssetDatabase.GetAssetPath(Selection.activeObject);
             window.RefreshLocksList();
             UserNameProvider.EnsureUserNameExists(true);
             window._userName = UserNameProvider.GetUserName();
@@ -32,22 +38,12 @@ namespace PrefabLocker.Editor
 
         private void OnGUI()
         {
-            GUILayout.Label("Lock/Unlock Prefab", EditorStyles.boldLabel);
             string newUser = EditorGUILayout.TextField("User Name", _userName);
             if (newUser != _userName)
             {
                 UserNameProvider.SetUserName(newUser);
                 _userName = newUser;
             }
-
-            _filePath = EditorGUILayout.TextField("Prefab Path", _filePath);
-
-            EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Lock Prefab"))
-            {
-                EditorCoroutineUtility.StartCoroutineOwnerless(LockPrefab());
-            }
-            EditorGUILayout.EndHorizontal();
 
             GUILayout.Label("Status: " + _statusMessage);
 
@@ -68,7 +64,7 @@ namespace PrefabLocker.Editor
         private void DrawLockedFilesList()
         {
             EditorGUILayout.BeginVertical("box");
-            _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition, GUILayout.Height(300));
+            _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
             
             if (_lockedFiles.Count == 0)
             {
@@ -78,34 +74,96 @@ namespace PrefabLocker.Editor
             {
                 string currentUser = UserNameProvider.GetUserName();
                 
-                foreach (var pair in _lockedFiles)
-                {
-                    string filePath = pair.Key;
-                    string lockedBy = pair.Value;
-                    bool isMyLock = lockedBy == currentUser;
+                // Headers row
+                EditorGUILayout.BeginHorizontal("box");
+                EditorGUILayout.BeginHorizontal(GUILayout.Width(20));
+                Rect iconRect = GUILayoutUtility.GetRect(16, 16, GUILayout.Width(20));
+                PrefabLockOverlay.DrawLockIcon(iconRect, null, true, Color.grey);
+                EditorGUILayout.EndHorizontal();
 
+// File Path header with sorting button
+                if (GUILayout.Button("File Path" + (_currentSortField == SortField.FilePath ? (_sortAscending ? " ↑" : " ↓") : ""), 
+                        EditorStyles.boldLabel, GUILayout.MinWidth(200)))
+                {
+                    if (_currentSortField == SortField.FilePath)
+                        _sortAscending = !_sortAscending;
+                    else
+                    {
+                        _currentSortField = SortField.FilePath;
+                        _sortAscending = true;
+                    }
+                }
+
+                if (GUILayout.Button("Locked By" + (_currentSortField == SortField.LockedBy ? (_sortAscending ? " ↑" : " ↓") : ""), 
+                        EditorStyles.boldLabel, GUILayout.Width(100)))
+                {
+                    if (_currentSortField == SortField.LockedBy)
+                        _sortAscending = !_sortAscending;
+                    else
+                    {
+                        _currentSortField = SortField.LockedBy;
+                        _sortAscending = true;
+                    }
+                }
+
+                EditorGUILayout.LabelField("Unlock", EditorStyles.boldLabel, GUILayout.Width(70));
+                EditorGUILayout.EndHorizontal();
+
+                List<string> sortedFiles = new(_lockedFiles.Keys);
+                switch (_currentSortField)
+                {
+                    case SortField.FilePath:
+                        sortedFiles.Sort((a, b) => _sortAscending ? 
+                            string.Compare(a, b, System.StringComparison.OrdinalIgnoreCase) : 
+                            string.Compare(b, a, System.StringComparison.OrdinalIgnoreCase));
+                        break;
+                    case SortField.LockedBy:
+                        sortedFiles.Sort((a, b) => _sortAscending ? 
+                            string.Compare(_lockedFiles[a], _lockedFiles[b], System.StringComparison.OrdinalIgnoreCase) : 
+                            string.Compare(_lockedFiles[b], _lockedFiles[a], System.StringComparison.OrdinalIgnoreCase));
+                        break;
+                }
+                
+                foreach (string filePath in sortedFiles)
+                {
+                    string lockedBy = _lockedFiles[filePath];
+                    bool isMyLock = lockedBy == currentUser;
+                    
                     EditorGUILayout.BeginHorizontal("box");
                     
-                    // Show the lock icon with appropriate color
-                    Rect iconRect = GUILayoutUtility.GetRect(16, 16);
+                    // Column 1: Lock icon
+                    EditorGUILayout.BeginHorizontal(GUILayout.Width(20));
+                    iconRect = GUILayoutUtility.GetRect(16, 16, GUILayout.Width(20));
                     PrefabLockOverlay.DrawLockIcon(iconRect, lockedBy, true);
+                    EditorGUILayout.EndHorizontal();
                     
-                    // File path and owner info
-                    EditorGUILayout.BeginVertical();
-                    GUILayout.Label(filePath, EditorStyles.boldLabel);
-                    GUILayout.Label("Locked by: " + lockedBy);
-                    EditorGUILayout.EndVertical();
+                    // Column 2: File path
+                    // Replace the simple label with a clickable object field
+                    Object asset = AssetDatabase.LoadAssetAtPath<Object>(filePath);
+                    if (asset != null)
+                    {
+                        EditorGUI.BeginDisabledGroup(true); // Make it read-only
+                        EditorGUILayout.ObjectField(asset, typeof(Object), false, GUILayout.MinWidth(200));
+                        EditorGUI.EndDisabledGroup();
+                    }
+                    else
+                    {
+                        // Fallback to regular label if asset doesn't exist
+                        EditorGUILayout.LabelField(filePath, GUILayout.MinWidth(200));
+                    }
                     
-                    // Only enable unlock button for files locked by current user
+                    // Column 3: Locked by user
+                    EditorGUILayout.LabelField(lockedBy, GUILayout.Width(100));
+                    
+                    // Column 4: Unlock button
                     GUI.enabled = isMyLock;
                     if (GUILayout.Button("Unlock", GUILayout.Width(70)))
                     {
                         EditorCoroutineUtility.StartCoroutineOwnerless(UnlockSpecificFile(filePath));
                     }
                     GUI.enabled = true;
-
+                    
                     EditorGUILayout.EndHorizontal();
-                    EditorGUILayout.Space(2);
                 }
             }
             
@@ -245,24 +303,6 @@ namespace PrefabLocker.Editor
                 string message = success ? "Unlock successful." : "Unlock failed: " + response;
                 EditorUtility.DisplayDialog("Unlock Prefab", message, "OK");
                 PrefabLockOverlay.UpdateData();
-            });
-        }
-
-        private IEnumerator LockPrefab()
-        {
-            yield return LockServiceClient.LockAsset(_filePath, (success, response) =>
-            {
-                _statusMessage = success ? "Lock successful." : "Lock failed: " + response;
-                Repaint();
-            });
-        }
-
-        private IEnumerator UnlockPrefab()
-        {
-            yield return LockServiceClient.UnlockAsset(_filePath, (success, response) =>
-            {
-                _statusMessage = success ? "Unlock successful." : "Unlock failed: " + response;
-                Repaint();
             });
         }
     }
