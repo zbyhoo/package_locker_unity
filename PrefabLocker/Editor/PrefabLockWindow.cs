@@ -15,6 +15,8 @@ namespace PrefabLocker.Editor
         private bool _isRefreshing;
         private SortField _currentSortField = SortField.FilePath;
         private bool _sortAscending = true;
+        private List<string> _branches = new();
+        private int _selectedBranchIndex;
         
         private enum SortField
         {
@@ -38,6 +40,60 @@ namespace PrefabLocker.Editor
 
         private void OnGUI()
         {
+            // Add Git information at the top of the window
+            EditorGUILayout.BeginVertical("box");
+
+            GUIStyle smallGreyStyle = new GUIStyle(EditorStyles.miniLabel)
+            {
+                fontStyle = FontStyle.Italic
+            };
+            
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Label("Branch:", smallGreyStyle, GUILayout.Width(50));
+            GUILayout.Label(GitProvider.GetBranch(), smallGreyStyle);
+            EditorGUILayout.EndHorizontal();
+
+            // // Git branch dropdown
+            // EditorGUILayout.BeginHorizontal();
+            // GUILayout.Label("Branch:", smallGreyStyle, GUILayout.Width(50));
+            //
+            // // Create branch dropdown
+            // if (_branches.Count == 0)
+            // {
+            //     // Show current branch as text if we don't have branches loaded yet
+            //     GUILayout.Label(GitProvider.GetBranch(), smallGreyStyle);
+            //
+            //     if (GUILayout.Button("Load Branches", GUILayout.Width(100)))
+            //     {
+            //         EditorCoroutineUtility.StartCoroutineOwnerless(LoadBranches());
+            //     }
+            // }
+            // else
+            // {
+            //     int newSelectedIndex = EditorGUILayout.Popup(_selectedBranchIndex, _branches.ToArray());
+            //     if (newSelectedIndex != _selectedBranchIndex)
+            //     {
+            //         _selectedBranchIndex = newSelectedIndex;
+            //         if (_selectedBranchIndex >= 0 && _selectedBranchIndex < _branches.Count)
+            //         {
+            //             EditorCoroutineUtility.StartCoroutineOwnerless(CheckoutBranch(_branches[_selectedBranchIndex]));
+            //         }
+            //     }
+            // }
+            //
+            // EditorGUILayout.EndHorizontal();
+
+            // Git origin display
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Label("Origin:", smallGreyStyle, GUILayout.Width(50));
+            string origin = GitProvider.GetOrigin();
+            GUILayout.Label(origin, smallGreyStyle);
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.EndVertical();
+
+            EditorGUILayout.Space(5);
+            
             string newUser = EditorGUILayout.TextField("User Name", _userName);
             if (newUser != _userName)
             {
@@ -80,8 +136,7 @@ namespace PrefabLocker.Editor
                 Rect iconRect = GUILayoutUtility.GetRect(16, 16, GUILayout.Width(20));
                 PrefabLockOverlay.DrawLockIcon(iconRect, null, true, Color.grey);
                 EditorGUILayout.EndHorizontal();
-
-// File Path header with sorting button
+                
                 if (GUILayout.Button("File Path" + (_currentSortField == SortField.FilePath ? (_sortAscending ? " ↑" : " ↓") : ""), 
                         EditorStyles.boldLabel, GUILayout.MinWidth(200)))
                 {
@@ -93,7 +148,7 @@ namespace PrefabLocker.Editor
                         _sortAscending = true;
                     }
                 }
-
+                
                 if (GUILayout.Button("Locked By" + (_currentSortField == SortField.LockedBy ? (_sortAscending ? " ↑" : " ↓") : ""), 
                         EditorStyles.boldLabel, GUILayout.Width(100)))
                 {
@@ -108,7 +163,7 @@ namespace PrefabLocker.Editor
 
                 EditorGUILayout.LabelField("Unlock", EditorStyles.boldLabel, GUILayout.Width(70));
                 EditorGUILayout.EndHorizontal();
-
+                
                 List<string> sortedFiles = new(_lockedFiles.Keys);
                 switch (_currentSortField)
                 {
@@ -304,6 +359,47 @@ namespace PrefabLocker.Editor
                 EditorUtility.DisplayDialog("Unlock Prefab", message, "OK");
                 PrefabLockOverlay.UpdateData();
             });
+        }
+        
+        private IEnumerator LoadBranches()
+        {
+            yield return null; // Wait one frame to ensure UI updates
+    
+            _statusMessage = "Loading branches...";
+            Repaint();
+    
+            _branches = GitProvider.GetAllBranches();
+    
+            // Find the current branch in the list
+            string currentBranch = GitProvider.GetBranch();
+            _selectedBranchIndex = _branches.IndexOf(currentBranch);
+            if (_selectedBranchIndex < 0 && _branches.Count > 0)
+                _selectedBranchIndex = 0;
+    
+            _statusMessage = "Branches loaded";
+            Repaint();
+        }
+
+        private IEnumerator CheckoutBranch(string branchName)
+        {
+            _statusMessage = $"Switching to branch {branchName}...";
+            Repaint();
+    
+            bool success = GitProvider.CheckoutBranch(branchName);
+    
+            if (success)
+            {
+                _statusMessage = $"Switched to branch {branchName}";
+                // Refresh the locks list since locks can be different on different branches
+                RefreshLocksList();
+            }
+            else
+            {
+                _statusMessage = $"Failed to switch to branch {branchName}";
+            }
+    
+            Repaint();
+            yield return null;
         }
     }
 }
