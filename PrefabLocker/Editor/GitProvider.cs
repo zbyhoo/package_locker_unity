@@ -14,13 +14,13 @@ namespace PrefabLocker.Editor
         private static DateTime _lastBranchUpdate = DateTime.MinValue;
         private static DateTime _lastOriginUpdate = DateTime.MinValue;
         private static DateTime _lastBranchesListUpdate = DateTime.MinValue;
-        private static readonly TimeSpan _cacheTimeout = TimeSpan.FromSeconds(30);
+        private static readonly TimeSpan CacheTimeout = TimeSpan.FromSeconds(30);
 
         public static string GetBranch(bool forceRefresh = false)
         {
             if (_cachedBranch == null || 
                 forceRefresh || 
-                DateTime.Now - _lastBranchUpdate > _cacheTimeout)
+                DateTime.Now - _lastBranchUpdate > CacheTimeout)
             {
                 try
                 {
@@ -42,7 +42,7 @@ namespace PrefabLocker.Editor
         {
             if (_cachedOrigin == null || 
                 forceRefresh || 
-                DateTime.Now - _lastOriginUpdate > _cacheTimeout)
+                DateTime.Now - _lastOriginUpdate > CacheTimeout)
             {
                 try
                 {
@@ -64,7 +64,7 @@ namespace PrefabLocker.Editor
         {
             if (_cachedBranches == null || 
                 forceRefresh || 
-                DateTime.Now - _lastBranchesListUpdate > _cacheTimeout)
+                DateTime.Now - _lastBranchesListUpdate > CacheTimeout)
             {
                 try
                 {
@@ -169,7 +169,7 @@ namespace PrefabLocker.Editor
             using (Process process = new())
             {
                 process.StartInfo = processInfo;
-                process.OutputDataReceived += (sender, e) =>
+                process.OutputDataReceived += (_, e) =>
                 {
                     if (!string.IsNullOrEmpty(e.Data))
                     {
@@ -177,7 +177,7 @@ namespace PrefabLocker.Editor
                     }
                 };
 
-                process.ErrorDataReceived += (sender, e) =>
+                process.ErrorDataReceived += (_, e) =>
                 {
                     if (!string.IsNullOrEmpty(e.Data))
                     {
@@ -202,6 +202,40 @@ namespace PrefabLocker.Editor
             }
 
             return output.ToString().Trim();
+        }
+        
+        public static bool HasLocalChanges(string filePath)
+        {
+            if (filePath.StartsWith("Assets"))
+            {
+                filePath = filePath.Substring("Assets".Length + 1);
+            }
+            string gitStatus = ExecuteGitCommand($"status --porcelain \"{filePath}\"");
+            return string.IsNullOrWhiteSpace(gitStatus) == false;
+        }
+
+        public static bool IsLastCommitPushedToRemote()
+        {
+            try
+            {
+                string localCommit = ExecuteGitCommand($"rev-parse HEAD");
+
+                // If we can't get local commit hash, the file might not be tracked
+                if (string.IsNullOrEmpty(localCommit))
+                    return false;
+
+                // Check if the local commit exists on the remote
+                string localHash = localCommit.Trim();
+                string checkIfPushed = ExecuteGitCommand($"branch -r --contains {localHash}");
+
+                // If we find any remote branch containing this commit, it's been pushed
+                return !string.IsNullOrEmpty(checkIfPushed);
+            }
+            catch
+            {
+                // If any errors occur (like upstream not set), it's not synced
+                return false;
+            }
         }
     }
 }

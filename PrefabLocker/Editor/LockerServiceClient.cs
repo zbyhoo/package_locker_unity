@@ -52,22 +52,20 @@ namespace PrefabLocker.Editor
         {
             WWWForm form = GetForm(filePath);
 
-            using (UnityWebRequest www = UnityWebRequest.Post($"{ServiceUrl}/lock", form))
-            {
-                yield return www.SendWebRequest();
+            using UnityWebRequest www = UnityWebRequest.Post($"{ServiceUrl}/lock", form);
+            yield return www.SendWebRequest();
 
-                if (www.result != UnityWebRequest.Result.Success)
-                {
-                    Debug.LogError("Lock failed: " + www.error);
-                    callback(false, www.error);
-                }
-                else
-                {
-                    // Optionally parse the response for more details.
-                    callback(true, www.downloadHandler.text);
+            if (www.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError("Lock failed: " + www.error);
+                callback(false, www.error);
+            }
+            else
+            {
+                // Optionally parse the response for more details.
+                callback(true, www.downloadHandler.text);
                     
-                    PrefabLockOverlay.UpdateData();
-                }
+                PrefabLockOverlay.UpdateData();
             }
         }
 
@@ -75,21 +73,19 @@ namespace PrefabLocker.Editor
         {
             WWWForm form = GetForm(filePath);
 
-            using (UnityWebRequest www = UnityWebRequest.Post($"{ServiceUrl}/unlock", form))
-            {
-                yield return www.SendWebRequest();
+            using UnityWebRequest www = UnityWebRequest.Post($"{ServiceUrl}/unlock", form);
+            yield return www.SendWebRequest();
 
-                if (www.result != UnityWebRequest.Result.Success)
-                {
-                    Debug.LogError("Unlock failed: " + www.error);
-                    callback(false, www.error);
-                }
-                else
-                {
-                    callback(true, www.downloadHandler.text);
+            if (www.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError("Unlock failed: " + www.error);
+                callback(false, www.error);
+            }
+            else
+            {
+                callback(true, www.downloadHandler.text);
                     
-                    PrefabLockOverlay.UpdateData();
-                }
+                PrefabLockOverlay.UpdateData();
             }
         }
 
@@ -102,24 +98,42 @@ namespace PrefabLocker.Editor
             }
             
             string url = AddParamsToUrl($"{ServiceUrl}/lockedAssets");
-
-            using (UnityWebRequest www = UnityWebRequest.Get(url))
+        
+            // Use WebClient in a separate thread to avoid blocking the main thread
+            bool requestCompleted = false;
+            LockDictionary locks = null;
+            string errorMessage = null;
+        
+            System.Threading.ThreadPool.QueueUserWorkItem(_ => 
             {
-                yield return www.SendWebRequest();
-
-                if (www.result != UnityWebRequest.Result.Success)
+                try
                 {
-                    Debug.LogError("Failed to update lock status: " + www.error);
-                }
-                else
-                {
-                    string json = www.downloadHandler.text;
-                    LockDictionary locks = Newtonsoft.Json.JsonConvert.DeserializeObject<LockDictionary>(json);
-                    if (locks is { Locks: not null })
+                    using (WebClient client = new WebClient())
                     {
-                        callback.Invoke(locks);
+                        string json = client.DownloadString(url);
+                        locks = Newtonsoft.Json.JsonConvert.DeserializeObject<LockDictionary>(json);
                     }
                 }
+                catch (Exception ex)
+                {
+                    errorMessage = ex.Message;
+                }
+                finally
+                {
+                    requestCompleted = true;
+                }
+            });
+        
+            // Wait until the request completes
+            yield return new WaitUntil(() => requestCompleted);
+        
+            if (errorMessage != null)
+            {
+                Debug.LogError("Failed to update lock status: " + errorMessage);
+            }
+            else if (locks is { Locks: not null })
+            {
+                callback.Invoke(locks);
             }
         }
         
@@ -127,12 +141,10 @@ namespace PrefabLocker.Editor
         {
             try
             {
-                using (WebClient client = new())
-                {
-                    string url = AddParamsToUrl($"{ServiceUrl}/status", filePath);
-                    string json = client.DownloadString(url);
-                    return Newtonsoft.Json.JsonConvert.DeserializeObject<LockStatus>(json);
-                }
+                using WebClient client = new();
+                string url = AddParamsToUrl($"{ServiceUrl}/status", filePath);
+                string json = client.DownloadString(url);
+                return Newtonsoft.Json.JsonConvert.DeserializeObject<LockStatus>(json);
             }
             catch (Exception ex)
             {
@@ -162,6 +174,44 @@ namespace PrefabLocker.Editor
                 Debug.LogError("Error locking prefab " + filePath + ": " + ex.Message);
                 return false;
             }
+        }
+        
+        // Add these methods to LockServiceClient class
+        public static LockDictionary UpdateLockStatusSync()
+        {
+            try
+            {
+                string url = AddParamsToUrl($"{ServiceUrl}/lockedAssets");
+
+                using WebClient webClient = new();
+                string response = webClient.DownloadString(url);
+                return Newtonsoft.Json.JsonConvert.DeserializeObject<LockDictionary>(response);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Failed to get locks: {e.Message}");
+                return null;
+            }
+        }
+
+        public static bool UnlockAssetSync(string assetPath)
+        {
+            string endpoint = $"{ServiceUrl}/unlock";
+
+            using WebClient webClient = new();
+            byte[] responseBytes = webClient.UploadValues(endpoint, GetHeaders(assetPath));
+            string response = Encoding.UTF8.GetString(responseBytes);
+        
+            bool success = !string.IsNullOrEmpty(response) && 
+                           !response.Contains("error") && 
+                           !response.Contains("fail");
+            
+            if (success)
+            {
+                PrefabLockOverlay.UpdateData();
+            }
+            
+            return success;
         }
     }
 }
