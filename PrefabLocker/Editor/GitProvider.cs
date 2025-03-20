@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Text;
 using UnityEngine;
 
@@ -18,8 +19,8 @@ namespace PrefabLocker.Editor
 
         public static string GetBranch(bool forceRefresh = false)
         {
-            if (_cachedBranch == null || 
-                forceRefresh || 
+            if (_cachedBranch == null ||
+                forceRefresh ||
                 DateTime.Now - _lastBranchUpdate > CacheTimeout)
             {
                 try
@@ -34,14 +35,14 @@ namespace PrefabLocker.Editor
                     _cachedBranch = "unknown";
                 }
             }
-            
+
             return _cachedBranch;
         }
 
         public static string GetOrigin(bool forceRefresh = false)
         {
-            if (_cachedOrigin == null || 
-                forceRefresh || 
+            if (_cachedOrigin == null ||
+                forceRefresh ||
                 DateTime.Now - _lastOriginUpdate > CacheTimeout)
             {
                 try
@@ -56,14 +57,14 @@ namespace PrefabLocker.Editor
                     _cachedOrigin = "unknown";
                 }
             }
-            
+
             return _cachedOrigin;
         }
 
         public static List<string> GetAllBranches(bool forceRefresh = false)
         {
-            if (_cachedBranches == null || 
-                forceRefresh || 
+            if (_cachedBranches == null ||
+                forceRefresh ||
                 DateTime.Now - _lastBranchesListUpdate > CacheTimeout)
             {
                 try
@@ -109,7 +110,7 @@ namespace PrefabLocker.Editor
                     _cachedBranches = new List<string>();
                 }
             }
-            
+
             return _cachedBranches;
         }
 
@@ -197,21 +198,111 @@ namespace PrefabLocker.Editor
                     {
                         UnityEngine.Debug.LogWarning($"Git command error: {errorMsg}");
                     }
+
                     return string.Empty;
                 }
             }
 
             return output.ToString().Trim();
         }
-        
+
         public static bool HasLocalChanges(string filePath)
         {
-            if (filePath.StartsWith("Assets"))
+            if (string.IsNullOrEmpty(filePath))
             {
-                filePath = filePath.Substring("Assets".Length + 1);
+                return false;
             }
-            string gitStatus = ExecuteGitCommand($"status --porcelain \"{filePath}\"");
-            return string.IsNullOrWhiteSpace(gitStatus) == false;
+
+            string normalizedFilePath = filePath.Replace('\\', '/').Trim();
+            string repoRelativePath = ConvertToRepoRelativePath(normalizedFilePath);
+
+            // Check main repository changes
+            if (CheckPathInGitStatus(repoRelativePath, "status --porcelain -uall"))
+            {
+                return true;
+            }
+
+            string submoduleStatus = ExecuteGitCommand("submodule --quiet foreach git status --porcelain -uall");
+            if (string.IsNullOrWhiteSpace(submoduleStatus))
+            {
+                return false;
+            }
+
+            string[] changedFiles = submoduleStatus.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+            return changedFiles.Any(statusLine =>
+            {
+                string statusPath = statusLine.Trim().Substring(statusLine.IndexOf(" ", StringComparison.Ordinal) + 1).Trim();
+                return repoRelativePath.Contains(statusPath, StringComparison.OrdinalIgnoreCase);
+            });
+        }
+
+        private static bool CheckPathInGitStatus(string repoRelativePath, string gitCommand)
+        {
+            string gitStatus = ExecuteGitCommand(gitCommand);
+            return CheckPathInGitStatusOutput(repoRelativePath, gitStatus);
+        }
+
+        private static bool CheckPathInGitStatusOutput(string repoRelativePath, string gitStatus)
+        {
+            if (string.IsNullOrWhiteSpace(gitStatus))
+                return false;
+
+            string[] changedFiles = gitStatus.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+            return changedFiles.Any(statusLine =>
+                statusLine.Contains(repoRelativePath, StringComparison.OrdinalIgnoreCase));
+        }
+
+        // Helper method to convert Unity asset path to Git repo relative path
+        private static string ConvertToRepoRelativePath(string unityPath)
+        {
+            try
+            {
+                // Get the repo root directory (absolute path)
+                string repoRoot = ExecuteGitCommand("rev-parse --show-toplevel").Replace('\\', '/');
+                if (string.IsNullOrEmpty(repoRoot))
+                    return unityPath; // Fallback if we can't get repo root
+
+                // Get Unity project path (Application.dataPath is /path/to/project/Assets)
+                string unityProjectPath = Application.dataPath.Replace('\\', '/');
+                // Remove the trailing "Assets" to get the project root
+                string projectRoot = unityProjectPath.Substring(0, unityProjectPath.LastIndexOf("/Assets"));
+
+                // Check if path is already a full path
+                if (System.IO.Path.IsPathRooted(unityPath))
+                {
+                    // Normalize path format with forward slashes
+                    unityPath = unityPath.Replace('\\', '/');
+                }
+                else if (unityPath.StartsWith("Assets/") || unityPath == "Assets")
+                {
+                    // Prepend the project root to get absolute path
+                    unityPath = $"{projectRoot}/{unityPath}";
+                }
+                else
+                {https://github.com/zbyhoo/package_locker_unity/blob/master/PrefabLocker/Editor/GitProvider.cs
+                    // Assume it's already relative to project root
+                    unityPath = $"{projectRoot}/{unityPath}";
+                }
+
+                // Now determine the path relative to the git repository
+                // Check if unityPath is within the repo
+                if (unityPath.StartsWith(repoRoot, StringComparison.OrdinalIgnoreCase))
+                {
+                    // Path is inside repo, make it relative to repo root
+                    return unityPath.Substring(repoRoot.Length).TrimStart('/');
+                }
+
+                // Path is outside repo, can't make it relative
+                UnityEngine.Debug.LogWarning($"Path is outside git repository: {unityPath}");
+                return unityPath;
+            }
+            catch (Exception ex)
+            {
+                UnityEngine.Debug.LogError($"Error converting path to repo relative: {ex.Message}");
+                return unityPath; // Return original path on error
+            }
         }
 
         public static bool IsLastCommitPushedToRemote()
@@ -223,6 +314,7 @@ namespace PrefabLocker.Editor
                 // If we can't get local commit hash, the file might not be tracked
                 if (string.IsNullOrEmpty(localCommit))
                     return false;
+
 
                 // Check if the local commit exists on the remote
                 string localHash = localCommit.Trim();
