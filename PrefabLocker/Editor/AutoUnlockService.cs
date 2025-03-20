@@ -11,7 +11,7 @@ namespace PrefabLocker.Editor
     [InitializeOnLoad]
     public static class AutoUnlockService
     {
-        private const float CHECK_INTERVAL_SECONDS = 60f;
+        private const float CHECK_INTERVAL_SECONDS = 60;
         private static DateTime _lastCheckTime = DateTime.MinValue;
         private static bool _isCheckingNow;
 
@@ -119,7 +119,8 @@ namespace PrefabLocker.Editor
                     continue;
 
                 // Check if file has been committed and pushed
-                bool canUnlock = CheckIfCommittedAndPushed(assetPath);
+                bool canUnlock = false;
+                yield return CheckIfCommittedAndPushedAsync(assetPath, result => { canUnlock = result; });
 
                 if (canUnlock)
                 {
@@ -198,26 +199,57 @@ namespace PrefabLocker.Editor
             bool pushed = GitProvider.IsLastCommitPushedToRemote();
             return pushed;
         }
+        
+        private static IEnumerator CheckIfCommittedAndPushedAsync(string assetPath, Action<bool> onComplete)
+        {
+            // Execute Git operations on a background thread
+            bool result = false;
+            bool isDone = false;
+    
+            System.Threading.Tasks.Task.Run(() => 
+            {
+                try 
+                {
+                    // Check if file has local changes
+                    bool hasLocalChanges = GitProvider.HasLocalChanges(assetPath);
+                    if (hasLocalChanges)
+                    {
+                        result = false;
+                    }
+                    else
+                    {
+                        // Check if last commit is pushed to remote
+                        result = GitProvider.IsLastCommitPushedToRemote();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError($"Error checking commit status: {ex.Message}");
+                    result = false;
+                }
+                finally
+                {
+                    isDone = true;
+                }
+            });
+    
+            // Wait for background thread to complete
+            yield return new WaitUntil(() => isDone);
+    
+            // Invoke callback with result
+            onComplete?.Invoke(result);
+        }
 
         private static void ShowUnlockedAssetsNotification()
         {
-            string message;
-            if (RecentlyUnlockedAssets.Count == 1)
-            {
-                string filename = System.IO.Path.GetFileName(RecentlyUnlockedAssets[0]);
-                message = $"Auto-unlocked asset: {filename}";
-            }
-            else
-            {
-                message = $"Auto-unlocked {RecentlyUnlockedAssets.Count} assets that were committed and pushed";
-            }
+            string assetsList = string.Join("\n", RecentlyUnlockedAssets.Select(path => System.IO.Path.GetFileName(path)));
 
             EditorUtility.DisplayDialog("Auto-Unlock Service",
-                $"{message}\n\nThese assets had no local changes and were committed to the repository.",
+                $"{assetsList}\n\nThese assets had no local changes and were committed to the repository.",
                 "OK");
 
             // Log to console as well for reference
-            Debug.Log($"[Prefab Locker] {message}:\n{string.Join("\n", RecentlyUnlockedAssets)}");
+            Debug.Log($"[Prefab Locker] {assetsList}:\n{string.Join("\n", RecentlyUnlockedAssets)}");
         }
 
         // Public method to trigger a check manually
