@@ -36,14 +36,23 @@ namespace PrefabLocker.Editor
         private static void PeriodicCheck()
         {
             if (_isCheckingNow)
-                return;
-
-            if ((DateTime.Now - _lastCheckTime).TotalSeconds >= CHECK_INTERVAL_SECONDS)
             {
-                _lastCheckTime = DateTime.Now;
-                _isCheckingNow = true;
-                EditorCoroutineUtility.StartCoroutineOwnerless(CheckLockedAssets());
+                return;
             }
+            
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                return;
+            }
+
+            if (!((DateTime.Now - _lastCheckTime).TotalSeconds >= CHECK_INTERVAL_SECONDS))
+            {
+                return;
+            }
+            
+            _lastCheckTime = DateTime.Now;
+            _isCheckingNow = true;
+            EditorCoroutineUtility.StartCoroutineOwnerless(CheckLockedAssets());
         }
 
         private static IEnumerator CheckLockedAssets()
@@ -119,8 +128,7 @@ namespace PrefabLocker.Editor
                     continue;
 
                 // Check if file has been committed and pushed
-                bool canUnlock = false;
-                yield return CheckIfCommittedAndPushedAsync(assetPath, result => { canUnlock = result; });
+                bool canUnlock = CheckIfCommittedAndPushed(assetPath);
 
                 if (canUnlock)
                 {
@@ -199,50 +207,10 @@ namespace PrefabLocker.Editor
             bool pushed = GitProvider.IsLastCommitPushedToRemote();
             return pushed;
         }
-        
-        private static IEnumerator CheckIfCommittedAndPushedAsync(string assetPath, Action<bool> onComplete)
-        {
-            // Execute Git operations on a background thread
-            bool result = false;
-            bool isDone = false;
-    
-            System.Threading.Tasks.Task.Run(() => 
-            {
-                try 
-                {
-                    // Check if file has local changes
-                    bool hasLocalChanges = GitProvider.HasLocalChanges(assetPath);
-                    if (hasLocalChanges)
-                    {
-                        result = false;
-                    }
-                    else
-                    {
-                        // Check if last commit is pushed to remote
-                        result = GitProvider.IsLastCommitPushedToRemote();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Debug.LogError($"Error checking commit status: {ex.Message}");
-                    result = false;
-                }
-                finally
-                {
-                    isDone = true;
-                }
-            });
-    
-            // Wait for background thread to complete
-            yield return new WaitUntil(() => isDone);
-    
-            // Invoke callback with result
-            onComplete?.Invoke(result);
-        }
 
         private static void ShowUnlockedAssetsNotification()
         {
-            string assetsList = string.Join("\n", RecentlyUnlockedAssets.Select(path => System.IO.Path.GetFileName(path)));
+            string assetsList = string.Join("\n", RecentlyUnlockedAssets.Select(System.IO.Path.GetFileName));
 
             EditorUtility.DisplayDialog("Auto-Unlock Service",
                 $"{assetsList}\n\nThese assets had no local changes and were committed to the repository.",
