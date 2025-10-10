@@ -1,6 +1,6 @@
 {
   "name": "zbyhoo.prefablocker",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "displayName": "Prefab Locker",
   "description": "A system for locking prefabs during collaborative editing",
   "unity": "2022.3",
