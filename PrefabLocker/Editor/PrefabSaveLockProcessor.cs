@@ -12,6 +12,7 @@ namespace PrefabLocker.Editor
         /// </summary>
         public static string[] OnWillSaveAssets(string[] paths)
         {
+            
             List<string> allowedPaths = new List<string>();
 
             foreach (string path in paths)

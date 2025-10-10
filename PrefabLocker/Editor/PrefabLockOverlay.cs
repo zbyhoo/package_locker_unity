@@ -8,8 +8,7 @@ namespace PrefabLocker.Editor
     [InitializeOnLoad]
     public static class PrefabLockOverlay
     {
-        // A dictionary mapping asset paths to the username of the locker.
-        private static Dictionary<string, string> _lockedPrefabs = new Dictionary<string, string>();
+        private static Dictionary<string, LockDictionary.LockEntry> _lockedPrefabs = new();
 
         // How often (in seconds) to update lock status from the server.
         private const float UPDATE_INTERVAL = 10f;
@@ -55,19 +54,19 @@ namespace PrefabLocker.Editor
             }
 
             // Check if this prefab is locked.
-            if (_lockedPrefabs.TryGetValue(assetPath, out string lockedBy))
+            if (_lockedPrefabs.TryGetValue(assetPath, out LockDictionary.LockEntry lockedBy))
             {
-                DrawLockIcon(selectionRect, lockedBy, false);
+                DrawLockIcon(selectionRect, lockedBy.User, false);
             }
         }
 
         internal static LockStatus GetStatus(string assetPath)
         {
-            bool exists = _lockedPrefabs.TryGetValue(assetPath, out string lockedBy);
+            bool exists = _lockedPrefabs.TryGetValue(assetPath, out LockDictionary.LockEntry lockedBy);
             return new LockStatus
             {
-                Locked = exists && lockedBy != null,
-                User = lockedBy
+                Locked = exists && lockedBy?.User != null,
+                User = lockedBy?.User
             };
         }
 

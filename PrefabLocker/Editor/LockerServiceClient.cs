@@ -104,6 +104,7 @@ namespace PrefabLocker.Editor
             bool requestCompleted = false;
             LockDictionary locks = null;
             string errorMessage = null;
+            string json = null;
         
             System.Threading.ThreadPool.QueueUserWorkItem(_ => 
             {
@@ -111,7 +112,7 @@ namespace PrefabLocker.Editor
                 {
                     using (WebClient client = new WebClient())
                     {
-                        string json = client.DownloadString(url);
+                        json = client.DownloadString(url);
                         locks = Newtonsoft.Json.JsonConvert.DeserializeObject<LockDictionary>(json);
                     }
                 }
@@ -131,6 +132,7 @@ namespace PrefabLocker.Editor
             if (errorMessage != null)
             {
                 Debug.Log("Failed to update lock status: " + errorMessage);
+                Debug.Log("Response: " + json);
             }
             else if (locks is { Locks: not null })
             {

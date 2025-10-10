@@ -5,6 +5,11 @@ namespace PrefabLocker.Editor
     [System.Serializable]
     public class LockDictionary
     {
-        public Dictionary<string, string> Locks;
+        public class LockEntry
+        {
+            public string User;
+            public string Branch;
+        }
+        public Dictionary<string, LockEntry> Locks;
     }
 }

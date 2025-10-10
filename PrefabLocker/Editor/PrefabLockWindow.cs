@@ -10,7 +10,7 @@ namespace PrefabLocker.Editor
     {
         private string _userName = "";
         private string _statusMessage = "";
-        private Dictionary<string, string> _lockedFiles = new();
+        private Dictionary<string, LockDictionary.LockEntry> _lockedFiles = new();
         private Vector2 _scrollPosition;
         private bool _isRefreshing;
         private SortField _currentSortField = SortField.FilePath;
@@ -21,13 +21,14 @@ namespace PrefabLocker.Editor
         private enum SortField
         {
             FilePath,
-            LockedBy
+            LockedBy,
+            Branch
         }
 
         [MenuItem("Tools/Prefab Locker/Manager")]
         public static void ShowWindow()
         {
-            PrefabLockWindow window = GetWindow<PrefabLockWindow>("Prefab Lock Manager");
+            PrefabLockWindow window = GetWindow<PrefabLockWindow>("Prefab Locker Manager");
             window.RefreshLocksList();
             UserNameProvider.EnsureUserNameExists(true);
             window._userName = UserNameProvider.GetUserName();
@@ -53,37 +54,6 @@ namespace PrefabLocker.Editor
             GUILayout.Label(GitProvider.GetBranch(), smallGreyStyle);
             EditorGUILayout.EndHorizontal();
 
-            // // Git branch dropdown
-            // EditorGUILayout.BeginHorizontal();
-            // GUILayout.Label("Branch:", smallGreyStyle, GUILayout.Width(50));
-            //
-            // // Create branch dropdown
-            // if (_branches.Count == 0)
-            // {
-            //     // Show current branch as text if we don't have branches loaded yet
-            //     GUILayout.Label(GitProvider.GetBranch(), smallGreyStyle);
-            //
-            //     if (GUILayout.Button("Load Branches", GUILayout.Width(100)))
-            //     {
-            //         EditorCoroutineUtility.StartCoroutineOwnerless(LoadBranches());
-            //     }
-            // }
-            // else
-            // {
-            //     int newSelectedIndex = EditorGUILayout.Popup(_selectedBranchIndex, _branches.ToArray());
-            //     if (newSelectedIndex != _selectedBranchIndex)
-            //     {
-            //         _selectedBranchIndex = newSelectedIndex;
-            //         if (_selectedBranchIndex >= 0 && _selectedBranchIndex < _branches.Count)
-            //         {
-            //             EditorCoroutineUtility.StartCoroutineOwnerless(CheckoutBranch(_branches[_selectedBranchIndex]));
-            //         }
-            //     }
-            // }
-            //
-            // EditorGUILayout.EndHorizontal();
-
-            // Git origin display
             EditorGUILayout.BeginHorizontal();
             GUILayout.Label("Origin:", smallGreyStyle, GUILayout.Width(50));
             string origin = GitProvider.GetOrigin();
@@ -149,6 +119,18 @@ namespace PrefabLocker.Editor
                     }
                 }
                 
+                if (GUILayout.Button("Branch" + (_currentSortField == SortField.Branch ? (_sortAscending ? " ↑" : " ↓") : ""),
+                        EditorStyles.boldLabel, GUILayout.Width(300)))
+                {
+                    if (_currentSortField == SortField.Branch)
+                        _sortAscending = !_sortAscending;
+                    else
+                    {
+                        _currentSortField = SortField.Branch;
+                        _sortAscending = true;
+                    }
+                }
+                
                 if (GUILayout.Button("Locked By" + (_currentSortField == SortField.LockedBy ? (_sortAscending ? " ↑" : " ↓") : ""), 
                         EditorStyles.boldLabel, GUILayout.Width(100)))
                 {
@@ -174,14 +156,20 @@ namespace PrefabLocker.Editor
                         break;
                     case SortField.LockedBy:
                         sortedFiles.Sort((a, b) => _sortAscending ? 
-                            string.Compare(_lockedFiles[a], _lockedFiles[b], System.StringComparison.OrdinalIgnoreCase) : 
-                            string.Compare(_lockedFiles[b], _lockedFiles[a], System.StringComparison.OrdinalIgnoreCase));
+                            string.Compare(_lockedFiles[a].User, _lockedFiles[b].User, System.StringComparison.OrdinalIgnoreCase) : 
+                            string.Compare(_lockedFiles[b].User, _lockedFiles[a].User, System.StringComparison.OrdinalIgnoreCase));
+                        break;
+                    case SortField.Branch:
+                        sortedFiles.Sort((a, b) => _sortAscending ? 
+                            string.Compare(_lockedFiles[a].Branch, _lockedFiles[b].Branch, System.StringComparison.OrdinalIgnoreCase) : 
+                            string.Compare(_lockedFiles[b].Branch, _lockedFiles[a].Branch, System.StringComparison.OrdinalIgnoreCase));
                         break;
                 }
                 
                 foreach (string filePath in sortedFiles)
                 {
-                    string lockedBy = _lockedFiles[filePath];
+                    string lockedBy = _lockedFiles[filePath].User;
+                    string branch = _lockedFiles[filePath].Branch;
                     bool isMyLock = lockedBy == currentUser;
                     
                     EditorGUILayout.BeginHorizontal("box");
@@ -207,10 +195,13 @@ namespace PrefabLocker.Editor
                         EditorGUILayout.LabelField(filePath, GUILayout.MinWidth(200));
                     }
                     
-                    // Column 3: Locked by user
+                    // Column 3: Branch
+                    EditorGUILayout.LabelField(branch, GUILayout.Width(300));
+                    
+                    // Column 4: Locked by user
                     EditorGUILayout.LabelField(lockedBy, GUILayout.Width(100));
                     
-                    // Column 4: Unlock button
+                    // Column 5: Unlock button
                     GUI.enabled = isMyLock;
                     if (GUILayout.Button("Unlock", GUILayout.Width(70)))
                     {

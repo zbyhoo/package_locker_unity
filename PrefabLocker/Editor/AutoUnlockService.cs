@@ -60,7 +60,7 @@ namespace PrefabLocker.Editor
             RecentlyUnlockedAssets.Clear();
 
             // Get all locked files
-            Dictionary<string, string> lockedFiles = new();
+            Dictionary<string, LockDictionary.LockEntry> lockedFiles = new();
             bool gotLocks = false;
 
             yield return LockServiceClient.UpdateLockStatus((locks) =>
@@ -104,12 +104,12 @@ namespace PrefabLocker.Editor
         }
 
         // Shared processing logic for both async and sync paths
-        private static IEnumerator ProcessLockedFiles(Dictionary<string, string> lockedFiles)
+        private static IEnumerator ProcessLockedFiles(Dictionary<string, LockDictionary.LockEntry> lockedFiles)
         {
             // Only check files locked by current user
             string currentUser = UserNameProvider.GetUserName();
             List<string> myLockedFiles = lockedFiles
-                .Where(kvp => kvp.Value == currentUser)
+                .Where(kvp => kvp.Value.User == currentUser)
                 .Select(kvp => kvp.Key)
                 .ToList();
 
@@ -122,11 +122,9 @@ namespace PrefabLocker.Editor
             // Check each locked file
             foreach (string assetPath in myLockedFiles)
             {
-                // Skip files that don't exist
                 if (!System.IO.File.Exists(assetPath))
                     continue;
 
-                // Check if file has been committed and pushed
                 bool canUnlock = CheckIfCommittedAndPushed(assetPath);
 
                 if (canUnlock)
@@ -161,12 +159,12 @@ namespace PrefabLocker.Editor
         }
         
         // Synchronous version of the processing logic for editor quit
-        private static void ProcessLockedFilesSync(Dictionary<string, string> lockedFiles)
+        private static void ProcessLockedFilesSync(Dictionary<string, LockDictionary.LockEntry> lockedFiles)
         {
             // Only check files locked by current user
             string currentUser = UserNameProvider.GetUserName();
             List<string> myLockedFiles = lockedFiles
-                .Where(kvp => kvp.Value == currentUser)
+                .Where(kvp => kvp.Value.User == currentUser)
                 .Select(kvp => kvp.Key)
                 .ToList();
 
