@@ -50,6 +50,8 @@ namespace PrefabLocker.Editor
 
         internal static IEnumerator LockAsset(string filePath, Action<bool, string> callback)
         {
+            UserNameProvider.EnsureUserNameExists(true);
+            
             WWWForm form = GetForm(filePath);
 
             using UnityWebRequest www = UnityWebRequest.Post($"{ServiceUrl}/lock", form);
@@ -57,7 +59,7 @@ namespace PrefabLocker.Editor
 
             if (www.result != UnityWebRequest.Result.Success)
             {
-                Debug.LogError("Lock failed: " + www.error);
+                Debug.Log("Lock failed: " + www.error);
                 callback(false, www.error);
             }
             else
@@ -78,13 +80,12 @@ namespace PrefabLocker.Editor
 
             if (www.result != UnityWebRequest.Result.Success)
             {
-                Debug.LogError("Unlock failed: " + www.error);
+                Debug.Log("Unlock failed: " + www.error);
                 callback(false, www.error);
             }
             else
             {
                 callback(true, www.downloadHandler.text);
-                    
                 PrefabLockOverlay.UpdateData();
             }
         }
@@ -129,7 +130,7 @@ namespace PrefabLocker.Editor
         
             if (errorMessage != null)
             {
-                Debug.LogError("Failed to update lock status: " + errorMessage);
+                Debug.Log("Failed to update lock status: " + errorMessage);
             }
             else if (locks is { Locks: not null })
             {
@@ -148,13 +149,14 @@ namespace PrefabLocker.Editor
             }
             catch (Exception ex)
             {
-                Debug.LogError("Error checking lock status for " + filePath + ": " + ex.Message);
+                Debug.Log("Error checking lock status for " + filePath + ": " + ex.Message);
                 return null;
             }
         }
         
         internal static bool LockPrefab(string filePath)
         {
+            UserNameProvider.EnsureUserNameExists(true);
             try
             {
                 using WebClient client = new();
@@ -171,7 +173,7 @@ namespace PrefabLocker.Editor
             }
             catch (Exception ex)
             {
-                Debug.LogError("Error locking prefab " + filePath + ": " + ex.Message);
+                Debug.Log("Error locking prefab " + filePath + ": " + ex.Message);
                 return false;
             }
         }
@@ -189,7 +191,7 @@ namespace PrefabLocker.Editor
             }
             catch (Exception e)
             {
-                Debug.LogError($"Failed to get locks: {e.Message}");
+                Debug.Log($"Failed to get locks: {e.Message}");
                 return null;
             }
         }
