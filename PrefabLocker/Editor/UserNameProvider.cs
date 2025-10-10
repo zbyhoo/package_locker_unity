@@ -5,7 +5,7 @@ namespace PrefabLocker.Editor
 {
     internal static class UserNameProvider
     {
-        private const string USER_NAME_TAG = "PrefabLockerUserName_v2";
+        private const string USER_NAME_TAG = "PrefabLockerUserName";
 
         public static string GetUserName()
         {
