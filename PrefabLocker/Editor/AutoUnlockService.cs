@@ -11,7 +11,6 @@ namespace PrefabLocker.Editor
     [InitializeOnLoad]
     public static class AutoUnlockService
     {
-        private const float CHECK_INTERVAL_SECONDS = 60;
         private static DateTime _lastCheckTime = DateTime.MinValue;
         private static bool _isCheckingNow;
 
@@ -45,7 +44,7 @@ namespace PrefabLocker.Editor
                 return;
             }
 
-            if (!((DateTime.Now - _lastCheckTime).TotalSeconds >= CHECK_INTERVAL_SECONDS))
+            if (!((DateTime.Now - _lastCheckTime).TotalSeconds >= PrefabLockerSettings.Get().CheckIntervalSeconds))
             {
                 return;
             }

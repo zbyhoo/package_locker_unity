@@ -13,6 +13,7 @@ namespace PrefabLocker.Editor
         
         public string Url;
         public int Port;
+        public int CheckIntervalSeconds = 60;
 
         internal string GetServiceUrl()
         {
