@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEditor;
+using UnityEngine;
 
 namespace PrefabLocker.Editor
 {
@@ -12,6 +13,10 @@ namespace PrefabLocker.Editor
         /// </summary>
         public static string[] OnWillSaveAssets(string[] paths)
         {
+            if (Application.isBatchMode)
+            {
+                return paths;
+            }
             
             List<string> allowedPaths = new List<string>();
 

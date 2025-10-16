@@ -16,6 +16,11 @@ namespace PrefabLocker.Editor
 
         static PrefabLockOverlay()
         {
+            if (Application.isBatchMode)
+            {
+                return;
+            }
+            
             // Subscribe to the project window GUI callback.
             EditorApplication.projectWindowItemOnGUI += OnProjectWindowItemGUI;
             _nextUpdateTime = EditorApplication.timeSinceStartup + UPDATE_INTERVAL;

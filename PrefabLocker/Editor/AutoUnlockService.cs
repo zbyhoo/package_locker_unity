@@ -19,6 +19,11 @@ namespace PrefabLocker.Editor
 
         static AutoUnlockService()
         {
+            if (Application.isBatchMode)
+            {
+                return;
+            }
+            
             EditorApplication.update += PeriodicCheck;
             
             // Subscribe to Unity's quitting event to perform final unlock check
