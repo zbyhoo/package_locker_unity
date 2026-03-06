@@ -213,13 +213,7 @@ namespace PrefabLocker.Editor
         private static void ShowUnlockedAssetsNotification()
         {
             string assetsList = string.Join("\n", RecentlyUnlockedAssets.Select(System.IO.Path.GetFileName));
-
-            EditorUtility.DisplayDialog("Auto-Unlock Service",
-                $"{assetsList}\n\nThese assets had no local changes and were committed to the repository.",
-                "OK");
-
-            // Log to console as well for reference
-            Debug.Log($"[Prefab Locker] {assetsList}:\n{string.Join("\n", RecentlyUnlockedAssets)}");
+            Debug.Log($"[Prefab Locker] Auto-unlocked {RecentlyUnlockedAssets.Count} assets:\n{string.Join("\n", RecentlyUnlockedAssets)}");
         }
 
         // Public method to trigger a check manually
