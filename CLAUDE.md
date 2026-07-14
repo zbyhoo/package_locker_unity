@@ -36,12 +36,14 @@ This is a Unity Editor package (`zbyhoo.prefablocker`) that provides collaborati
 
 ## API Endpoints
 
+The backend is multi-tenant: one server, one port, projects isolated by a slug in the URL path. The client builds the base URL as `http://{Url}:{Port}/p/{ProjectSlug}` (see `PrefabLockerSettings.GetServiceUrl()`), so every endpoint below is prefixed with `/p/<slug>`. The `ProjectSlug` must match `^[a-z0-9._-]{1,64}$` and is required — `LockServiceClient` blocks all operations if it is missing/invalid.
+
 The client calls these backend endpoints (all include `branch`, `origin`, `filePath`, `userName` params):
-- `POST /lock` - lock an asset
-- `POST /unlock` - unlock an asset
-- `GET /status` - get lock status for a single asset
-- `GET /lockedAssets` - get all locked assets
+- `POST /p/<slug>/lock` - lock an asset
+- `POST /p/<slug>/unlock` - unlock an asset
+- `GET /p/<slug>/status` - get lock status for a single asset
+- `GET /p/<slug>/lockedAssets` - get all locked assets
 
 ## Backend
 
-The Flask backend lives in the parent repo (`prefab_locker/`). See parent CLAUDE.md for backend commands. Server runs on port 5005.
+The Flask backend lives in the parent repo (`prefab_locker/`). See parent CLAUDE.md for backend commands. Server runs on port 5055 (single multi-tenant instance; the legacy per-project instances used 5005).

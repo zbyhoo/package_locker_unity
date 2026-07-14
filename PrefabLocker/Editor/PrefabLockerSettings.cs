@@ -12,12 +12,13 @@ namespace PrefabLocker.Editor
         private const string FILE = "PrefabLockerSettings.asset";
         
         public string Url;
-        public int Port;
+        public int Port = 5055;
+        public string ProjectSlug;
         public int CheckIntervalSeconds = 60;
 
         internal string GetServiceUrl()
         {
-            return "http://" + Url + ":" + Port;
+            return "http://" + Url + ":" + Port + "/p/" + ProjectSlug;
         }
 
         [MenuItem("Tools/Prefab Locker/Settings")]

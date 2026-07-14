@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.Specialized;
 using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -10,10 +12,35 @@ namespace PrefabLocker.Editor
 {
     internal abstract class LockServiceClient
     {
+        private static readonly Regex SlugRegex = new(@"^[a-z0-9._-]{1,64}$");
+        private static bool _slugErrorDialogShown;
+
         // Replace with your actual cloud service URL.
         private static string ServiceUrl => PrefabLockerSettings.Get().GetServiceUrl();
         private static string Branch => GitProvider.GetBranch();
         private static string Origin => GitProvider.GetOrigin();
+
+        private static bool isConfigValid()
+        {
+            string slug = PrefabLockerSettings.Get().ProjectSlug;
+            if (!string.IsNullOrEmpty(slug) && SlugRegex.IsMatch(slug))
+            {
+                return true;
+            }
+
+            if (_slugErrorDialogShown == false)
+            {
+                _slugErrorDialogShown = true;
+                Debug.LogError("Prefab Locker: ProjectSlug is missing or invalid. " +
+                                "Set it in Tools/Prefab Locker/Settings (must match ^[a-z0-9._-]{1,64}$).");
+                EditorUtility.DisplayDialog(
+                    "Prefab Locker",
+                    "ProjectSlug is missing or invalid.\n\nSet it in Tools/Prefab Locker/Settings.",
+                    "OK");
+            }
+
+            return false;
+        }
 
         private static WWWForm GetForm(string filePath)
         {
@@ -50,8 +77,14 @@ namespace PrefabLocker.Editor
 
         internal static IEnumerator LockAsset(string filePath, Action<bool, string> callback)
         {
+            if (isConfigValid() == false)
+            {
+                callback(false, "Invalid ProjectSlug configuration");
+                yield break;
+            }
+
             UserNameProvider.EnsureUserNameExists(true);
-            
+
             WWWForm form = GetForm(filePath);
 
             using UnityWebRequest www = UnityWebRequest.Post($"{ServiceUrl}/lock", form);
@@ -73,6 +106,12 @@ namespace PrefabLocker.Editor
 
         internal static IEnumerator UnlockAsset(string filePath, Action<bool, string> callback)
         {
+            if (isConfigValid() == false)
+            {
+                callback(false, "Invalid ProjectSlug configuration");
+                yield break;
+            }
+
             WWWForm form = GetForm(filePath);
 
             using UnityWebRequest www = UnityWebRequest.Post($"{ServiceUrl}/unlock", form);
@@ -92,6 +131,11 @@ namespace PrefabLocker.Editor
 
         internal static IEnumerator UpdateLockStatus(Action<LockDictionary> callback)
         {
+            if (isConfigValid() == false)
+            {
+                yield break;
+            }
+
             if (UserNameProvider.EnsureUserNameExists(false) == false)
             {
                 Debug.Log("name not provided");
@@ -142,6 +186,11 @@ namespace PrefabLocker.Editor
         
         internal static LockStatus GetLockStatus(string filePath)
         {
+            if (isConfigValid() == false)
+            {
+                return null;
+            }
+
             try
             {
                 using WebClient client = new();
@@ -158,6 +207,11 @@ namespace PrefabLocker.Editor
         
         internal static bool LockPrefab(string filePath)
         {
+            if (isConfigValid() == false)
+            {
+                return false;
+            }
+
             UserNameProvider.EnsureUserNameExists(true);
             try
             {
@@ -183,6 +237,11 @@ namespace PrefabLocker.Editor
         // Add these methods to LockServiceClient class
         public static LockDictionary UpdateLockStatusSync()
         {
+            if (isConfigValid() == false)
+            {
+                return null;
+            }
+
             try
             {
                 string url = AddParamsToUrl($"{ServiceUrl}/lockedAssets");
@@ -200,6 +259,11 @@ namespace PrefabLocker.Editor
 
         public static bool UnlockAssetSync(string assetPath)
         {
+            if (isConfigValid() == false)
+            {
+                return false;
+            }
+
             string endpoint = $"{ServiceUrl}/unlock";
 
             using WebClient webClient = new();
