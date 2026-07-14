@@ -32,11 +32,11 @@ This is a Unity Editor package (`zbyhoo.prefablocker`) that provides collaborati
 
 **UserNameProvider** - Stores username in `EditorPrefs` under key `PrefabLockerUserName`.
 
-**PrefabLockerSettings** - ScriptableObject at `Assets/PrefabLocker/Editor/PrefabLocker/PrefabLockerSettings.asset` storing server URL, port, and check interval.
+**PrefabLockerSettings** - ScriptableObject at `Assets/PrefabLocker/Editor/PrefabLocker/PrefabLockerSettings.asset` storing server host (`Url`), project slug, and check interval. The port is hardcoded to 5055 (`PORT` const).
 
 ## API Endpoints
 
-The backend is multi-tenant: one server, one port, projects isolated by a slug in the URL path. The client builds the base URL as `http://{Url}:{Port}/p/{ProjectSlug}` (see `PrefabLockerSettings.GetServiceUrl()`), so every endpoint below is prefixed with `/p/<slug>`. The `ProjectSlug` must match `^[a-z0-9._-]{1,64}$` and is required — `LockServiceClient` blocks all operations if it is missing/invalid.
+The backend is multi-tenant: one server, one port, projects isolated by a slug in the URL path. The client builds the base URL as `http://{Url}:5055/p/{ProjectSlug}` (see `PrefabLockerSettings.GetServiceUrl()`; the port is fixed at 5055), so every endpoint below is prefixed with `/p/<slug>`. The `ProjectSlug` must match `^[a-z0-9._-]{1,64}$` and is required — `LockServiceClient` blocks all operations if it is missing/invalid.
 
 The client calls these backend endpoints (all include `branch`, `origin`, `filePath`, `userName` params):
 - `POST /p/<slug>/lock` - lock an asset

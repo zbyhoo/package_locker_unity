@@ -10,15 +10,15 @@ namespace PrefabLocker.Editor
     {
         private const string PATH = "Assets/PrefabLocker/Editor/PrefabLocker/";
         private const string FILE = "PrefabLockerSettings.asset";
-        
+        private const int PORT = 5055;
+
         public string Url;
-        public int Port = 5055;
         public string ProjectSlug;
         public int CheckIntervalSeconds = 60;
 
         internal string GetServiceUrl()
         {
-            return "http://" + Url + ":" + Port + "/p/" + ProjectSlug;
+            return "http://" + Url + ":" + PORT + "/p/" + ProjectSlug;
         }
 
         [MenuItem("Tools/Prefab Locker/Settings")]
